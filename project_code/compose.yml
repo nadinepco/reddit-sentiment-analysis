@@ -1,0 +1,76 @@
+# list of all containers you intended to be used
+services:
+
+    ################################################################################
+    # run reddit_collector container
+    ################################################################################
+
+    reddit_collector:
+        build: reddit_collector/
+        # image gets built from Dockerfile   
+        volumes:
+            # creating local dir into the "/app"-dir in this container
+            - ./reddit_collector/:/app/
+        depends_on:
+            # DB into which posts are dumped                
+            - mongodb
+        env_file:
+            - .env
+
+    ################################################################################   
+    # fire up MongoDB container
+    ###############################################################################
+
+    mongodb:
+        image: mongo
+        # image downloaded from Docker Hub                   
+        ports:
+            # maps port 27017 of this container (RS) to port 27017 of localhost (LS)
+            - 27017:27017
+
+    ################################################################################
+    # run etl_job container 
+    ################################################################################
+
+    etl_job:
+        build: etl_job/
+        # image gets built from Dockerfile
+        # platform:--platform linux/amd64 should be added if problem for Mac
+        volumes:
+            # creating local dir into the "/app"-dir in this container
+            - ./etl_job/:/app/
+        depends_on:
+            # DB from which we extract posts
+            - mongodb
+            # DB into which we load transformed posts                   
+            - postgresdb
+
+    ################################################################################
+    # fire up postgresDB container 
+    ################################################################################
+
+    postgresdb:
+        image: postgres
+        # image downloaded from Docker Hub               
+        ports:
+            # maps port 5432 of this container (RS) to port 5555 of localhost (LS)
+            - 5555:5432
+        environment:
+            # sets environment variables                 
+            - POSTGRES_USER=postgres
+            - POSTGRES_PASSWORD=postgres
+            - POSTGRES_DB=posts
+
+    ################################################################################
+    # finally, the cherry on top: slackbot container
+    ################################################################################
+
+    slackbot:
+        build: slackbot/
+        volumes:
+            - ./slackbot/:/app/
+        depends_on:
+            - postgresdb
+    ################################################################################
+    #
+    ################################################################################
